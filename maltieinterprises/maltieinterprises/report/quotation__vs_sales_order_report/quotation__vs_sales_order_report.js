@@ -1,14 +1,15 @@
 // // Copyright (c) 2026, Hybrowlabs and contributors
 // // For license information, please see license.txt
 
-
 // frappe.query_reports["Quotation  Vs Sales Order Report"] = {
 //     "filters": [
 //         {
 //             "fieldname": "branch",
 //             "label": __("Branch"),
-//             "fieldtype": "Link",
-//             "options": "Branch",
+//             "fieldtype": "MultiSelectList",
+//             "get_data": function(txt) {
+//                 return frappe.db.get_link_options("Branch", txt);
+//             },
 //             "default": "",
 //             "reqd": 0
 //         },
@@ -47,6 +48,16 @@ frappe.query_reports["Quotation  Vs Sales Order Report"] = {
             "fieldtype": "MultiSelectList",
             "get_data": function(txt) {
                 return frappe.db.get_link_options("Branch", txt);
+            },
+            "default": "",
+            "reqd": 0
+        },
+        {
+            "fieldname": "brand",
+            "label": __("Brand"),
+            "fieldtype": "MultiSelectList",
+            "get_data": function(txt) {
+                return frappe.db.get_link_options("Brand", txt);
             },
             "default": "",
             "reqd": 0

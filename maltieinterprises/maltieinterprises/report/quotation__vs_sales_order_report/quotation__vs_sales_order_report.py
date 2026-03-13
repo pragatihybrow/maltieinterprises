@@ -6,7 +6,6 @@
 # def execute(filters=None):
 #     filters = filters or {}
 
-#     # If the checkbox 'show_summary' is checked, show summary report
 #     if filters.get("show_summary"):
 #         columns = get_summary_columns()
 #         data = get_summary_data(filters)
@@ -17,9 +16,6 @@
 #     return columns, data
 
 
-# # -------------------------
-# # Columns for Detailed Report
-# # -------------------------
 # def get_columns():
 #     return [
 #         {"label": "Branch", "fieldname": "branch", "fieldtype": "Data", "width": 120},
@@ -41,16 +37,17 @@
 #     ]
 
 
-# # -------------------------
-# # Detailed Report Data
-# # -------------------------
 # def get_data(filters):
 #     conditions = ""
 #     values = {}
 
 #     if filters.get("branch"):
-#         conditions += " AND q.custom_branch = %(branch)s"
-#         values["branch"] = filters.get("branch")
+#         branches = filters.get("branch")
+#         if isinstance(branches, str):
+#             branches = [b.strip() for b in branches.split(",") if b.strip()]
+#         if branches:
+#             conditions += " AND q.custom_branch IN %(branch)s"
+#             values["branch"] = branches
 
 #     if filters.get("from_date"):
 #         conditions += " AND q.transaction_date >= %(from_date)s"
@@ -117,9 +114,6 @@
 #     """, values, as_dict=True)
 
 
-# # -------------------------
-# # Summary Columns
-# # -------------------------
 # def get_summary_columns():
 #     return [
 #         {"label": "Quotation", "fieldname": "quotation", "fieldtype": "Link", "options": "Quotation", "width": 200},
@@ -129,16 +123,17 @@
 #     ]
 
 
-# # -------------------------
-# # Summary Report Data
-# # -------------------------
 # def get_summary_data(filters):
 #     conditions = ""
 #     values = {}
 
 #     if filters.get("branch"):
-#         conditions += " AND q.custom_branch = %(branch)s"
-#         values["branch"] = filters.get("branch")
+#         branches = filters.get("branch")
+#         if isinstance(branches, str):
+#             branches = [b.strip() for b in branches.split(",") if b.strip()]
+#         if branches:
+#             conditions += " AND q.custom_branch IN %(branch)s"
+#             values["branch"] = branches
 
 #     if filters.get("from_date"):
 #         conditions += " AND q.transaction_date >= %(from_date)s"
@@ -175,7 +170,6 @@
 #     if not rows:
 #         return rows
 
-#     # Append a summary row at the bottom with only counts
 #     total_quotations = len(rows)
 #     total_so_count = sum(r.get("so_count") or 0 for r in rows)
 
@@ -185,9 +179,7 @@
 #         "sales_order": f"<b>Total SOs: {total_so_count}</b>",
 #         "total_so": None,
 #     })
-
 #     return rows
-
 
 
 # Copyright (c) 2026, Hybrowlabs and contributors
@@ -240,6 +232,14 @@ def get_data(filters):
         if branches:
             conditions += " AND q.custom_branch IN %(branch)s"
             values["branch"] = branches
+
+    if filters.get("brand"):
+        brands = filters.get("brand")
+        if isinstance(brands, str):
+            brands = [b.strip() for b in brands.split(",") if b.strip()]
+        if brands:
+            conditions += " AND i.brand IN %(brand)s"
+            values["brand"] = brands
 
     if filters.get("from_date"):
         conditions += " AND q.transaction_date >= %(from_date)s"
