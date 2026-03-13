@@ -1,3 +1,195 @@
+# # Copyright (c) 2026, Hybrowlabs and contributors
+# # For license information, please see license.txt
+
+# import frappe
+
+# def execute(filters=None):
+#     filters = filters or {}
+
+#     # If the checkbox 'show_summary' is checked, show summary report
+#     if filters.get("show_summary"):
+#         columns = get_summary_columns()
+#         data = get_summary_data(filters)
+#     else:
+#         columns = get_columns()
+#         data = get_data(filters)
+
+#     return columns, data
+
+
+# # -------------------------
+# # Columns for Detailed Report
+# # -------------------------
+# def get_columns():
+#     return [
+#         {"label": "Branch", "fieldname": "branch", "fieldtype": "Data", "width": 120},
+#         {"label": "Quotation", "fieldname": "quotation", "fieldtype": "Link", "options": "Quotation", "width": 200},
+#         {"label": "Date", "fieldname": "date", "fieldtype": "Date", "width": 120},
+#         {"label": "SO Number", "fieldname": "so_number", "fieldtype": "Link", "options": "Sales Order", "width": 150},
+#         {"label": "Quotation Title", "fieldname": "quotation_title", "fieldtype": "Data", "width": 200},
+#         {"label": "Item Code", "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": 150},
+#         {"label": "Item Name", "fieldname": "item_name", "fieldtype": "Data", "width": 200},
+#         {"label": "Brand", "fieldname": "brand", "fieldtype": "Data", "width": 120},
+#         {"label": "QI Qty", "fieldname": "qi_qty", "fieldtype": "Data", "width": 120},
+#         {"label": "Sum SO Qty", "fieldname": "so_qty", "fieldtype": "Data", "width": 120},
+#         {"label": "Diff Qty", "fieldname": "diff_qty", "fieldtype": "Data", "width": 120},
+#         {"label": "QI Rate", "fieldname": "qi_rate", "fieldtype": "Currency", "width": 120},
+#         {"label": "QI Total", "fieldname": "qi_total", "fieldtype": "Currency", "width": 120},
+#         {"label": "SI Rate", "fieldname": "si_rate", "fieldtype": "Currency", "width": 120},
+#         {"label": "SO Total", "fieldname": "so_total", "fieldtype": "Currency", "width": 120},
+#         {"label": "Reason", "fieldname": "reason", "fieldtype": "Data", "width": 200},
+#     ]
+
+
+# # -------------------------
+# # Detailed Report Data
+# # -------------------------
+# def get_data(filters):
+#     conditions = ""
+#     values = {}
+
+#     if filters.get("branch"):
+#         conditions += " AND q.custom_branch = %(branch)s"
+#         values["branch"] = filters.get("branch")
+
+#     if filters.get("from_date"):
+#         conditions += " AND q.transaction_date >= %(from_date)s"
+#         values["from_date"] = filters.get("from_date")
+
+#     if filters.get("to_date"):
+#         conditions += " AND q.transaction_date <= %(to_date)s"
+#         values["to_date"] = filters.get("to_date")
+
+#     return frappe.db.sql(f"""
+#         SELECT
+#             q.custom_branch AS branch,
+#             q.name AS quotation,
+#             q.transaction_date AS date,
+#             soi.parent AS so_number,
+#             q.title AS quotation_title,
+#             qi.item_code,
+#             qi.item_name,
+#             i.brand,
+#             CONCAT(CAST(qi.qty AS UNSIGNED), ' ', qi.uom) AS qi_qty,
+#             CONCAT(CAST(SUM(soi.qty) AS UNSIGNED), ' ', soi.uom) AS so_qty,
+#             CONCAT('<span style="color:',
+#                 CASE 
+#                     WHEN (COALESCE(SUM(soi.qty),0) - qi.qty) < 0 
+#                     THEN 'red' ELSE 'green'
+#                 END,
+#                 '">',
+#                 CAST(COALESCE(SUM(soi.qty),0) - qi.qty AS SIGNED),
+#                 ' ', qi.uom,
+#                 '</span>'
+#             ) AS diff_qty,
+#             qi.rate AS qi_rate,
+#             q.total AS qi_total,
+#             soi.rate AS si_rate,
+#             so.total AS so_total,
+#             q.custom_remark AS reason
+#         FROM
+#             `tabQuotation` q
+#         LEFT JOIN
+#             `tabQuotation Item` qi ON q.name = qi.parent
+#         LEFT JOIN
+#             `tabItem` i ON qi.item_code = i.name
+#         LEFT JOIN
+#             `tabSales Order Item` soi
+#                 ON q.name = soi.prevdoc_docname
+#         LEFT JOIN
+#             `tabSales Order` so ON soi.parent = so.name
+#         WHERE
+#             q.docstatus = 1
+#             {conditions}
+#         GROUP BY
+#             q.custom_branch,
+#             q.name,
+#             q.transaction_date,
+#             soi.parent,
+#             q.title,
+#             qi.item_code,
+#             qi.item_name,
+#             i.brand,
+#             qi.qty,
+#             qi.uom
+#         ORDER BY
+#             q.name ASC
+#     """, values, as_dict=True)
+
+
+# # -------------------------
+# # Summary Columns
+# # -------------------------
+# def get_summary_columns():
+#     return [
+#         {"label": "Quotation", "fieldname": "quotation", "fieldtype": "Link", "options": "Quotation", "width": 200},
+#         {"label": "Quotation Total", "fieldname": "quotation_total", "fieldtype": "Currency", "width": 150},
+#         {"label": "Sales Orders", "fieldname": "sales_order", "fieldtype": "Data", "width": 250},
+#         {"label": "Total Sales Orders", "fieldname": "total_so", "fieldtype": "Currency", "width": 150},
+#     ]
+
+
+# # -------------------------
+# # Summary Report Data
+# # -------------------------
+# def get_summary_data(filters):
+#     conditions = ""
+#     values = {}
+
+#     if filters.get("branch"):
+#         conditions += " AND q.custom_branch = %(branch)s"
+#         values["branch"] = filters.get("branch")
+
+#     if filters.get("from_date"):
+#         conditions += " AND q.transaction_date >= %(from_date)s"
+#         values["from_date"] = filters.get("from_date")
+
+#     if filters.get("to_date"):
+#         conditions += " AND q.transaction_date <= %(to_date)s"
+#         values["to_date"] = filters.get("to_date")
+
+#     rows = frappe.db.sql(f"""
+#         SELECT
+#             q.name AS quotation,
+#             q.total AS quotation_total,
+#             GROUP_CONCAT(DISTINCT so.name ORDER BY so.name SEPARATOR ', ') AS sales_order,
+#             COALESCE(SUM(DISTINCT so.total), 0) AS total_so,
+#             COUNT(DISTINCT so.name) AS so_count
+#         FROM
+#             `tabQuotation` q
+#         LEFT JOIN `tabSales Order Item` soi
+#             ON soi.prevdoc_docname = q.name
+#             AND soi.docstatus = 1
+#         LEFT JOIN `tabSales Order` so
+#             ON so.name = soi.parent
+#             AND so.docstatus = 1
+#         WHERE
+#             q.docstatus = 1
+#             {conditions}
+#         GROUP BY
+#             q.name, q.total
+#         ORDER BY
+#             q.name ASC
+#     """, values, as_dict=True)
+
+#     if not rows:
+#         return rows
+
+#     # Append a summary row at the bottom with only counts
+#     total_quotations = len(rows)
+#     total_so_count = sum(r.get("so_count") or 0 for r in rows)
+
+#     rows.append({
+#         "quotation": f"Total Quotations: {total_quotations}",
+#         "quotation_total": None,
+#         "sales_order": f"<b>Total SOs: {total_so_count}</b>",
+#         "total_so": None,
+#     })
+
+#     return rows
+
+
+
 # Copyright (c) 2026, Hybrowlabs and contributors
 # For license information, please see license.txt
 
@@ -6,7 +198,6 @@ import frappe
 def execute(filters=None):
     filters = filters or {}
 
-    # If the checkbox 'show_summary' is checked, show summary report
     if filters.get("show_summary"):
         columns = get_summary_columns()
         data = get_summary_data(filters)
@@ -17,9 +208,6 @@ def execute(filters=None):
     return columns, data
 
 
-# -------------------------
-# Columns for Detailed Report
-# -------------------------
 def get_columns():
     return [
         {"label": "Branch", "fieldname": "branch", "fieldtype": "Data", "width": 120},
@@ -41,16 +229,17 @@ def get_columns():
     ]
 
 
-# -------------------------
-# Detailed Report Data
-# -------------------------
 def get_data(filters):
     conditions = ""
     values = {}
 
     if filters.get("branch"):
-        conditions += " AND q.custom_branch = %(branch)s"
-        values["branch"] = filters.get("branch")
+        branches = filters.get("branch")
+        if isinstance(branches, str):
+            branches = [b.strip() for b in branches.split(",") if b.strip()]
+        if branches:
+            conditions += " AND q.custom_branch IN %(branch)s"
+            values["branch"] = branches
 
     if filters.get("from_date"):
         conditions += " AND q.transaction_date >= %(from_date)s"
@@ -117,9 +306,6 @@ def get_data(filters):
     """, values, as_dict=True)
 
 
-# -------------------------
-# Summary Columns
-# -------------------------
 def get_summary_columns():
     return [
         {"label": "Quotation", "fieldname": "quotation", "fieldtype": "Link", "options": "Quotation", "width": 200},
@@ -129,16 +315,17 @@ def get_summary_columns():
     ]
 
 
-# -------------------------
-# Summary Report Data
-# -------------------------
 def get_summary_data(filters):
     conditions = ""
     values = {}
 
     if filters.get("branch"):
-        conditions += " AND q.custom_branch = %(branch)s"
-        values["branch"] = filters.get("branch")
+        branches = filters.get("branch")
+        if isinstance(branches, str):
+            branches = [b.strip() for b in branches.split(",") if b.strip()]
+        if branches:
+            conditions += " AND q.custom_branch IN %(branch)s"
+            values["branch"] = branches
 
     if filters.get("from_date"):
         conditions += " AND q.transaction_date >= %(from_date)s"
@@ -175,7 +362,6 @@ def get_summary_data(filters):
     if not rows:
         return rows
 
-    # Append a summary row at the bottom with only counts
     total_quotations = len(rows)
     total_so_count = sum(r.get("so_count") or 0 for r in rows)
 
@@ -187,4 +373,3 @@ def get_summary_data(filters):
     })
 
     return rows
-
