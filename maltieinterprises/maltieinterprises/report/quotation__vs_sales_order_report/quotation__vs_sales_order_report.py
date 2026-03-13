@@ -52,6 +52,14 @@ def get_data(filters):
         conditions += " AND q.custom_branch = %(branch)s"
         values["branch"] = filters.get("branch")
 
+    if filters.get("from_date"):
+        conditions += " AND q.transaction_date >= %(from_date)s"
+        values["from_date"] = filters.get("from_date")
+
+    if filters.get("to_date"):
+        conditions += " AND q.transaction_date <= %(to_date)s"
+        values["to_date"] = filters.get("to_date")
+
     return frappe.db.sql(f"""
         SELECT
             q.custom_branch AS branch,
@@ -109,6 +117,9 @@ def get_data(filters):
     """, values, as_dict=True)
 
 
+# -------------------------
+# Summary Columns
+# -------------------------
 def get_summary_columns():
     return [
         {"label": "Quotation", "fieldname": "quotation", "fieldtype": "Link", "options": "Quotation", "width": 200},
@@ -118,6 +129,9 @@ def get_summary_columns():
     ]
 
 
+# -------------------------
+# Summary Report Data
+# -------------------------
 def get_summary_data(filters):
     conditions = ""
     values = {}
@@ -126,12 +140,21 @@ def get_summary_data(filters):
         conditions += " AND q.custom_branch = %(branch)s"
         values["branch"] = filters.get("branch")
 
-    return frappe.db.sql(f"""
+    if filters.get("from_date"):
+        conditions += " AND q.transaction_date >= %(from_date)s"
+        values["from_date"] = filters.get("from_date")
+
+    if filters.get("to_date"):
+        conditions += " AND q.transaction_date <= %(to_date)s"
+        values["to_date"] = filters.get("to_date")
+
+    rows = frappe.db.sql(f"""
         SELECT
             q.name AS quotation,
             q.total AS quotation_total,
             GROUP_CONCAT(DISTINCT so.name ORDER BY so.name SEPARATOR ', ') AS sales_order,
-            COALESCE(SUM(DISTINCT so.total), 0) AS total_so
+            COALESCE(SUM(DISTINCT so.total), 0) AS total_so,
+            COUNT(DISTINCT so.name) AS so_count
         FROM
             `tabQuotation` q
         LEFT JOIN `tabSales Order Item` soi
@@ -148,3 +171,20 @@ def get_summary_data(filters):
         ORDER BY
             q.name ASC
     """, values, as_dict=True)
+
+    if not rows:
+        return rows
+
+    # Append a summary row at the bottom with only counts
+    total_quotations = len(rows)
+    total_so_count = sum(r.get("so_count") or 0 for r in rows)
+
+    rows.append({
+        "quotation": f"Total Quotations: {total_quotations}",
+        "quotation_total": None,
+        "sales_order": f"<b>Total SOs: {total_so_count}</b>",
+        "total_so": None,
+    })
+
+    return rows
+
